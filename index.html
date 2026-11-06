@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-title" content="ATLAS">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>A.T.L.A.S.</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0f15">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600&family=Share+Tech+Mono&display=swap">
+<style>
+/* Layout: una columna vertical de teléfono (máx. 480 px): saludo, rueda de control en medio arco,
+   indicadores, pestañas de modo, accesos 4×2, línea de pulso. Edición en hoja inferior. */
+:root{
+  --bg:#0b0f15; --panel:#0f151d; --line:#1e2934; --line-2:#2c3a48;
+  --ink:#dfe7ee; --dim:#6d7d8c;
+  --red:#ff3d55; --red-fill:#9b1d30; --red-soft:rgba(255,61,85,.14);
+  --blue:#70b7ff; --blue-soft:rgba(112,183,255,.13);
+  --ok:#3be0a0; --amber:#ffb547;
+  --f-display:'Chakra Petch','Bahnschrift','Segoe UI',sans-serif;
+  --f-mono:'Share Tech Mono','Cascadia Mono',ui-monospace,monospace;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%}
+body{
+  margin:0;background-color:var(--bg);color:var(--ink);font-family:var(--f-display);font-size:14px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cpath d='M36 31v10M31 36h10' stroke='%23dfe7ee' stroke-opacity='.15' stroke-width='1'/%3E%3C/svg%3E"),radial-gradient(ellipse at 50% 35%,rgba(112,183,255,.07),transparent 60%);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:max(10px,env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-bottom,0px));
+  user-select:none;-webkit-user-select:none;
+}
+body.editing{padding-bottom:calc(46vh + 20px)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+button:focus-visible,input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:1px solid var(--blue);outline-offset:3px}
+input,textarea{user-select:text;-webkit-user-select:text}
+.app{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.mono{font-family:var(--f-mono)} .red{color:var(--red)}
+.lbl{font:11px var(--f-mono);letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.btn{border:1px solid var(--line-2);padding:9px 14px;font:12px var(--f-mono);letter-spacing:.16em;text-transform:uppercase}
+.btn:active{background:var(--red-soft)}
+.btn.red{border-color:var(--red);color:var(--red)}
+.btn.blue{border-color:var(--blue);color:var(--blue)}
+.btn.on{border-color:var(--red);background:var(--red-soft)}
+.pill{display:inline-block;font:10px var(--f-mono);letter-spacing:.14em;padding:2px 6px;border:1px solid currentColor}
+.pill.ok{color:var(--ok)} .pill.warn{color:var(--amber)} .pill.idle{color:var(--dim)} .pill.crit{color:var(--red)}
+
+/* Header */
+.top{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:start;border-bottom:1px solid var(--line);padding-bottom:10px}
+.idx{font-size:11px;letter-spacing:.2em;color:var(--dim);grid-column:1}
+.brand{font:12px var(--f-mono);letter-spacing:.3em;grid-column:2;grid-row:1;text-align:right}
+.greet{grid-column:1/-1;margin:2px 0 0;font-weight:300;font-size:clamp(34px,11vw,52px);line-height:1;letter-spacing:.06em}
+.date{grid-column:1;font:13px var(--f-mono);letter-spacing:.3em;color:var(--dim)}
+.clock{grid-column:2;grid-row:3;font:20px var(--f-mono);text-align:right}
+
+/* Wheel */
+.wheelbox{position:relative}
+.wheelbox svg{display:block;width:100%;height:auto;overflow:visible}
+.seg{cursor:pointer;outline:none}
+.seg path.s{fill:rgba(15,21,29,.9);stroke:var(--line-2);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.seg .ico{stroke:#c9d3dc}
+.seg text.n{fill:#c9d3dc;font:15px var(--f-mono);letter-spacing:2px;text-anchor:middle;dominant-baseline:middle}
+.seg rect.t{fill:var(--red)}
+.seg text.t{fill:#1a0a0e;font:10px var(--f-mono);letter-spacing:1px;text-anchor:middle;dominant-baseline:middle}
+.seg.on path.s{fill:var(--red-fill);stroke:var(--red)}
+.seg.on .ico{stroke:#fff} .seg.on text.n{fill:#fff} .seg.on rect.t{fill:#ffd2d8}
+.seg.empty path.s{stroke-dasharray:6 5;fill:rgba(15,21,29,.5)}
+.seg.empty text.n{fill:var(--dim)} .seg.empty .ico{stroke:var(--dim)}
+.editing .seg path.s{stroke-dasharray:7 4}
+.seg.sel path.s{fill:var(--blue-soft)!important;stroke:var(--blue)!important;stroke-width:3;stroke-dasharray:none!important}
+.arclbl{fill:var(--dim);font:13px var(--f-mono);letter-spacing:4px}
+.spin-slow{transform-origin:300px 300px;animation:spin 70s linear infinite}
+.spin-mid{transform-origin:300px 300px;animation:spin 22s linear infinite}
+.spin-rev{transform-origin:300px 300px;animation:spin 14s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.core.think .spin-mid{animation-duration:2.2s}
+.vortex{filter:drop-shadow(0 0 3px rgba(223,231,238,.6))}
+.stat{position:absolute;bottom:2%;display:flex;align-items:center;gap:8px;text-align:left}
+.stat.l{left:0} .stat.r{right:0;flex-direction:row-reverse;text-align:right}
+.ring{position:relative;width:46px;height:46px;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .trk{fill:none;stroke:var(--line-2);stroke-width:3}
+.ring .val{fill:none;stroke:var(--red);stroke-width:3;transition:stroke-dasharray .6s}
+.ring .val.b{stroke:var(--blue)}
+.ring span{position:absolute;inset:0;display:grid;place-items:center;font:15px var(--f-mono);color:var(--red)}
+.ring span.b{color:var(--blue);font-size:11px}
+.stat b{display:block;font-weight:500;font-size:13px;letter-spacing:.1em}
+.stat small{font:10px var(--f-mono);letter-spacing:.16em;color:var(--dim)}
+
+/* Modes + grid */
+.modes{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-inline:-2px;padding:2px}
+.modes::-webkit-scrollbar{display:none}
+.modes button{flex:1 0 auto;min-width:84px;border:1px solid var(--line-2);padding:11px 10px;font:12px var(--f-mono);letter-spacing:.2em;color:#b9c4ce;background:rgba(11,15,21,.75)}
+.modes button[aria-selected="true"]{border-color:var(--red);background:var(--red-soft);color:#fff;box-shadow:inset 0 0 0 1px var(--red)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tile{position:relative;aspect-ratio:1/1.05;border:1px solid var(--line-2);background:rgba(11,15,21,.78);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-width:0}
+.tile .no{position:absolute;top:4px;left:6px;font:11px var(--f-mono);color:var(--red)}
+.tile svg{width:26px;height:26px;color:#c9d3dc}
+.tile b{font:10px var(--f-mono);letter-spacing:.14em;font-weight:400;color:#c9d3dc;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-inline:3px}
+.tile:active{border-color:var(--red);background:var(--red-soft)}
+.tile.empty{border-style:dashed} .tile.empty svg,.tile.empty b{color:var(--dim)}
+.editing .tile{border-style:dashed}
+.tile.sel{border:2px solid var(--blue)!important;background:var(--blue-soft)}
+
+/* Footer */
+#ecg{width:100%;height:34px;display:block}
+.foot{display:flex;gap:8px;align-items:center}
+.foot .sp{flex:1}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);padding:5px 8px;font:10px var(--f-mono);letter-spacing:.14em}
+.chip i{width:6px;height:6px;border-radius:50%;background:var(--dim)}
+.chip.on i{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+.chip.focus{color:var(--red);border-color:var(--red)}
+.hint{font:10px var(--f-mono);letter-spacing:.14em;color:var(--dim);text-align:center}
+
+/* Edit sheet */
+.esheet{position:fixed;left:0;right:0;bottom:0;height:46vh;z-index:10;background:rgba(11,15,21,.97);border-top:1px solid var(--blue);display:flex;flex-direction:column;gap:8px;
+  padding:12px max(16px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.esheet > *{max-width:480px;width:100%;margin-inline:auto}
+.ev-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ev-sel{font:12px/1.4 var(--f-mono);border-left:2px solid var(--blue);padding:2px 8px;min-width:0}
+.ev-sel span{color:var(--blue)}
+.ev-row{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.ev-row .btn{padding:8px 2px;font-size:10px;letter-spacing:.06em}
+.ev-row .btn:disabled{opacity:.3}
+.cats{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none}
+.cats button{flex:none;font:10px var(--f-mono);letter-spacing:.12em;padding:5px 8px;border:1px solid var(--line-2);color:var(--dim)}
+.cats button.on{border-color:var(--blue);color:var(--ink);background:var(--blue-soft)}
+.catalog{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:5px;align-content:start}
+.capp{border:1px solid var(--line);padding:8px 2px;display:flex;flex-direction:column;align-items:center;gap:5px;font:9.5px var(--f-mono);letter-spacing:.06em;background:var(--bg);min-width:0}
+.capp svg{width:22px;height:22px}
+.capp span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-inline:2px}
+.capp.in{color:var(--blue);border-color:var(--blue)}
+
+/* App window */
+.win{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;
+  padding:max(10px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.win > *{max-width:480px;width:100%;margin-inline:auto}
+.win.in{animation:unfold .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes unfold{from{transform:scaleY(.03);opacity:.2;filter:brightness(2)}to{transform:none;opacity:1;filter:none}}
+.w-head{display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.w-head .no{font:22px var(--f-mono);color:var(--red)}
+.w-head svg{width:22px;height:22px}
+.w-head h2{margin:0;font-size:15px;font-weight:500;letter-spacing:.2em;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.w-body{flex:1;min-height:0;overflow:auto;padding-top:14px;user-select:text;-webkit-user-select:text}
+h3{margin:0 0 8px;font:11px var(--f-mono);letter-spacing:.2em;color:var(--dim);font-weight:400}
+.chat{display:flex;flex-direction:column;height:100%;gap:8px}
+.msgs{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:88%;line-height:1.5;font-size:15px}
+.msg .who{font:10px var(--f-mono);letter-spacing:.2em;color:var(--dim);margin-bottom:3px}
+.msg.atlas .body{border-left:2px solid var(--blue);padding:6px 10px;background:var(--blue-soft)}
+.msg.user{align-self:flex-end;text-align:right}
+.msg.user .body{border-right:2px solid var(--red);padding:6px 10px;background:var(--red-soft)}
+.cursor::after{content:"▍";color:var(--blue);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.entry{display:flex;gap:6px;border:1px solid var(--line-2);padding:5px}
+.entry input{flex:1;min-width:0;background:none;border:0;color:var(--ink);font:16px var(--f-mono);padding:6px}
+.entry input::placeholder{color:var(--dim)}
+.calc{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.calc .disp{grid-column:1/-1;border:1px solid var(--line-2);padding:12px;text-align:right;min-height:96px;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;overflow:hidden}
+.calc .disp small{font:14px var(--f-mono);color:var(--dim);word-break:break-all}
+.calc .disp div{font:34px var(--f-mono);word-break:break-all}
+.calc button{border:1px solid var(--line-2);padding:16px 0;font:20px var(--f-mono)}
+.calc button:active{background:var(--blue-soft)}
+.calc button.op{color:var(--blue)} .calc button.eq{background:var(--red-fill);border-color:var(--red)}
+.notes{width:100%;height:calc(100% - 26px);min-height:300px;resize:none;background:transparent;border:1px solid var(--line-2);color:var(--ink);font:16px/1.6 var(--f-mono);padding:12px}
+.tasks{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.tasks li{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);padding:9px 10px;font-size:15px}
+.tasks li.done span{color:var(--dim);text-decoration:line-through}
+.tasks .box{width:22px;height:22px;border:1px solid var(--blue);display:grid;place-items:center;color:var(--blue)}
+.tasks .x{color:var(--dim);font:11px var(--f-mono)}
+.focus{display:flex;flex-direction:column;align-items:center;gap:16px;padding-top:10px}
+.focus svg{width:min(240px,64vw);height:auto}
+.focus .time{font:48px var(--f-mono)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:0 0 16px}
+.kv dt{font:10px var(--f-mono);letter-spacing:.16em;color:var(--dim);padding-top:3px}
+.kv dd{margin:0;font-family:var(--f-mono)}
+.note{border-left:2px solid var(--amber);padding:8px 12px;line-height:1.5;color:#c9d3dc;margin:14px 0;font-size:14px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.field input{background:transparent;border:1px solid var(--line-2);color:var(--ink);font:16px var(--f-mono);padding:10px}
+
+.toast{position:fixed;left:50%;bottom:max(24px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--panel);border:1px solid var(--red);padding:9px 14px;font:12px var(--f-mono);letter-spacing:.1em;max-width:min(440px,90vw);text-align:center;transition:opacity .3s}
+.toast.gone{opacity:0;pointer-events:none}
+
+/* Horizontal en teléfono: rueda a la izquierda, saludo + modos + accesos a la derecha */
+@media (orientation:landscape) and (max-height:600px){
+  .app{max-width:1000px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-areas:"wheel top" "wheel modes" "wheel grid" "ecg foot";column-gap:18px;row-gap:8px;align-items:start}
+  .top{grid-area:top;padding-bottom:6px}
+  .greet{font-size:clamp(24px,8vh,38px)}
+  .idx,.brand{font-size:10px}
+  .date{font-size:11px} .clock{font-size:16px}
+  .wheelbox{grid-area:wheel;align-self:center;justify-self:center;width:min(100%,calc((100vh - 90px) * 1.33));width:min(100%,calc((100dvh - 90px) * 1.33))}
+  .modes{grid-area:modes}
+  .modes button{min-width:0;padding:8px;font-size:11px;letter-spacing:.14em}
+  .grid{grid-area:grid;gap:5px}
+  .tile{aspect-ratio:auto;height:clamp(50px,17vh,76px);gap:4px}
+  .tile svg{width:20px;height:20px}
+  .tile b{font-size:9px}
+  .tile .no{font-size:9px;top:2px;left:4px}
+  #ecg{grid-area:ecg;height:26px;align-self:end}
+  .foot{grid-area:foot;align-self:end}
+  .foot .btn{padding:6px 12px}
+  .hint{display:none}
+  body.editing{padding-bottom:calc(58vh + 16px)}
+  .esheet{height:58vh}
+  .esheet > *,.win > *{max-width:860px}
+  .catalog{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}
+  .w-head{padding-bottom:6px} .w-body{padding-top:8px}
+  .calc .disp{min-height:56px;padding:6px 10px} .calc .disp div{font-size:24px}
+  .calc{gap:5px}
+  .calc button{padding:7px 0;font-size:16px}
+  .focus{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:18px;padding-top:0}
+  .focus svg{width:min(150px,38vh)}
+  .focus .time{font-size:38px}
+  .notes{min-height:150px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0s!important;animation-iteration-count:1!important;transition-duration:0s!important}}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <header class="top">
+    <div class="idx mono"><span class="red">ÍNDICE</span> 01 · <span id="hMode">ESCUELA</span></div>
+    <div class="brand">A.T.L.A.S</div>
+    <h1 class="greet" id="greet">BUENAS NOCHES</h1>
+    <div class="date" id="date">—</div>
+    <div class="clock" id="clock">--:--</div>
+  </header>
+
+  <div class="wheelbox">
+    <svg viewBox="0 0 600 450" id="wsvg" role="group" aria-label="Rueda de control">
+      <defs>
+        <path id="arcTop" d="M 18 300 A 282 282 0 0 1 582 300"/>
+        <path id="arcBot" d="M 173.1 359.2 A 140 140 0 0 0 426.9 359.2"/>
+      </defs>
+      <g class="spin-slow" id="ticks"></g>
+      <text class="arclbl"><textPath href="#arcTop" startOffset="6%">SISTEMA</textPath></text>
+      <text class="arclbl" text-anchor="middle"><textPath href="#arcTop" startOffset="50%">CONTROL</textPath></text>
+      <text class="arclbl" text-anchor="end"><textPath href="#arcTop" startOffset="94%" id="arcMode">ESCUELA</textPath></text>
+      <g id="segs"></g>
+      <g class="core" id="core">
+        <g class="spin-rev"><path d="M 300 172 A 128 128 0 1 1 172 300" fill="none" stroke="#c9d3dc" stroke-width="2" opacity=".85"/></g>
+        <circle cx="302" cy="300" r="100" fill="#0b0f15" stroke="#ff3d55" stroke-width="2.4"/>
+        <circle cx="298" cy="300" r="98" fill="none" stroke="#70b7ff" stroke-width="2" opacity=".9"/>
+        <g class="spin-mid vortex" id="vortex"></g>
+        <circle cx="300" cy="300" r="10" fill="none" stroke="#dfe7ee" stroke-width="2.4"/>
+        <circle cx="300" cy="300" r="4" fill="#dfe7ee"/>
+        <text class="arclbl" text-anchor="middle"><textPath href="#arcBot" startOffset="50%" id="dayLbl">DÍA · 0%</textPath></text>
+      </g>
+    </svg>
+    <button class="stat l" id="statTasks" type="button">
+      <span class="ring"><svg viewBox="0 0 50 50"><circle class="trk" cx="25" cy="25" r="22" pathLength="100"/><circle class="val" id="rTasks" cx="25" cy="25" r="22" pathLength="100" stroke-dasharray="0 100"/></svg><span id="nTasks">0</span></span>
+      <span><b>PENDIENTES</b><small>TAREAS</small></span>
+    </button>
+    <button class="stat r" id="statFocus" type="button">
+      <span class="ring"><svg viewBox="0 0 50 50"><circle class="trk" cx="25" cy="25" r="22" pathLength="100"/><circle class="val b" id="rFocus" cx="25" cy="25" r="22" pathLength="100" stroke-dasharray="100 100"/></svg><span class="b" id="nFocus">25</span></span>
+      <span><b>ENFOQUE</b><small id="sFocus">LISTO</small></span>
+    </button>
+  </div>
+
+  <div class="modes" id="modes" role="tablist" aria-label="Modo de uso"></div>
+  <div class="grid" id="grid"></div>
+  <canvas id="ecg"></canvas>
+  <div class="foot">
+    <span class="chip" id="linkChip"><i></i><span>SIN ENLACE</span></span>
+    <span class="chip focus" id="focusChip" hidden></span>
+    <span class="sp"></span>
+    <button class="btn blue" id="editBtn" type="button">Editar</button>
+  </div>
+  <div class="hint" id="hint">TOCA PARA ABRIR · MANTÉN PRESIONADO PARA EDITAR</div>
+</div>
+
+<div class="esheet" id="esheet" hidden>
+  <div class="ev-top"><div class="ev-sel" id="evSel">Toca una ranura</div><button class="btn blue" data-act="done" type="button">Listo</button></div>
+  <div class="ev-row">
+    <button class="btn" data-act="left" type="button">◀</button>
+    <button class="btn" data-act="right" type="button">▶</button>
+    <button class="btn red" data-act="remove" type="button">Quitar</button>
+    <button class="btn" data-act="del" type="button">− Ran.</button>
+    <button class="btn" data-act="add" type="button">+ Ran.</button>
+  </div>
+  <div class="cats" id="cats"></div>
+  <div class="catalog" id="catalog"></div>
+</div>
+
+<div class="win" id="win" hidden role="dialog" aria-labelledby="wName">
+  <div class="w-head"><span class="no" id="wNo">01</span><span id="wIco"></span><h2 id="wName">APP</h2><button class="btn" id="wClose" type="button">Cerrar ✕</button></div>
+  <div class="w-body" id="wBody"></div>
+</div>
+
+<div class="toast gone" id="toast" role="status"></div>
+
+<script>
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+const svgEl = (t, a = {}, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+const pad = n => String(n).padStart(2, "0");
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (_) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} } };
+const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+let toastT;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.remove("gone"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("gone"), 2600); }
+
+/* ---------- Iconos ---------- */
+const ICON = {
+  consola:"M4 4h16v12H8l-4 4z M8 8l2 2-2 2 M12 12h4",
+  enlace:"M12 21v-8 M8.5 16a5 5 0 0 1 7 0 M5.5 13a9 9 0 0 1 13 0 M2.5 10a13 13 0 0 1 19 0",
+  tareas:"M4 6l2 2 3-3 M4 13l2 2 3-3 M12 7h8 M12 14h8 M4 20h16",
+  apuntes:"M4 20l4-1L19 8l-3-3L5 16z M14 7l3 3",
+  enfoque:"M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10 M12 11a1 1 0 1 0 0 2a1 1 0 1 0 0-2",
+  calc:"M5 2h14v20H5z M8 5h8v4H8z M8 12h2 M11 12h2 M14 12h2 M8 16h2 M11 16h2 M14 16h2 M8 19h2 M11 19h2 M14 19h2",
+  mensajes:"M4 5h16v11H9l-5 4z M8 10h8",
+  correo:"M3 5h18v14H3z M3 5l9 7 9-7",
+  mapas:"M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z M9 4v14 M15 6v14",
+  musica:"M9 18V5l11-2v13 M9 18a3 3 0 1 1-6 0a3 3 0 1 1 6 0 M20 16a3 3 0 1 1-6 0a3 3 0 1 1 6 0",
+  fotos:"M3 5h18v14H3z M3 16l5-5 4 4 3-3 6 6 M15.5 8.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3",
+  calendario:"M3 5h18v16H3z M3 9h18 M8 3v4 M16 3v4 M7 13h2 M11 13h2 M15 13h2 M7 17h2 M11 17h2",
+  atajos:"M12 2l9 5v10l-9 5-9-5V7z M12 22V12 M21 7l-9 5-9-5",
+  recordatorios:"M4 6h2 M4 12h2 M4 18h2 M9 6h11 M9 12h11 M9 18h11",
+  notas:"M4 4h16v11l-5 5H4z M15 20v-5h5",
+  whatsapp:"M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3z M9 9c0 3 3 6 6 6",
+  spotify:"M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M7 9.5c3.5-1 7-.6 10 1 M7.5 12.8c3-.8 5.6-.4 8 .9 M8 15.8c2.3-.6 4.3-.3 6 .6",
+  youtube:"M2 7a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3z M10 9l5 3-5 3z",
+  instagram:"M4 4h16v16H4z M12 8.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7 M16.5 7h.01",
+  plus:"M12 5v14 M5 12h14",
+};
+const icon = id => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICON[id] || ICON.plus}"/></svg>`;
+
+/* ---------- Catálogo ---------- */
+const CATS = {atl:"ATLAS", ios:"IPHONE", red:"REDES"};
+const TAG = {atl:"ATL", ios:"IOS", red:"RED"};
+const APPS = [
+  {id:"consola", n:"Consola", s:"CONSOLA", c:"atl"},
+  {id:"enlace", n:"Enlace ATLAS", s:"ENLACE", c:"atl"},
+  {id:"tareas", n:"Tareas", s:"TAREAS", c:"atl"},
+  {id:"apuntes", n:"Apuntes", s:"APUNTES", c:"atl"},
+  {id:"enfoque", n:"Enfoque", s:"ENFOQUE", c:"atl"},
+  {id:"calc", n:"Calculadora", s:"CALC", c:"atl"},
+  {id:"mensajes", n:"Mensajes", s:"MSG", c:"ios", url:"sms:"},
+  {id:"correo", n:"Correo", s:"CORREO", c:"ios", url:"mailto:"},
+  {id:"calendario", n:"Calendario", s:"CAL", c:"ios", url:"calshow://"},
+  {id:"mapas", n:"Mapas", s:"MAPAS", c:"ios", url:"maps://"},
+  {id:"musica", n:"Música", s:"MÚSICA", c:"ios", url:"music://"},
+  {id:"fotos", n:"Fotos", s:"FOTOS", c:"ios", url:"photos-redirect://"},
+  {id:"notas", n:"Notas", s:"NOTAS", c:"ios", url:"mobilenotes://"},
+  {id:"recordatorios", n:"Recordatorios", s:"RECORD", c:"ios", url:"x-apple-reminderkit://"},
+  {id:"atajos", n:"Atajos", s:"ATAJOS", c:"ios", url:"shortcuts://"},
+  {id:"whatsapp", n:"WhatsApp", s:"WHATSAPP", c:"red", url:"whatsapp://"},
+  {id:"spotify", n:"Spotify", s:"SPOTIFY", c:"red", url:"spotify://"},
+  {id:"youtube", n:"YouTube", s:"YOUTUBE", c:"red", url:"youtube://"},
+  {id:"instagram", n:"Instagram", s:"INSTA", c:"red", url:"instagram://"},
+];
+const A = Object.fromEntries(APPS.map(a => [a.id, a]));
+const MODES = [{id:"escuela", n:"ESCUELA"}, {id:"oficina", n:"OFICINA"}, {id:"industria", n:"INDUSTRIA"}, {id:"enfoque", n:"ENFOQUE"}, {id:"noche", n:"NOCHE"}];
+const DEFAULTS = {
+  escuela:{wheel:["apuntes","calc","tareas","enfoque","consola"], grid:["calendario","mensajes","correo","fotos","musica","mapas","youtube","enlace"]},
+  oficina:{wheel:["correo","calendario","tareas","notas","consola"], grid:["mensajes","whatsapp","calc","apuntes","mapas","atajos","recordatorios","enlace"]},
+  industria:{wheel:["enlace","consola","calc","apuntes","tareas"], grid:["mensajes","whatsapp","fotos","mapas","notas","recordatorios","atajos","calendario"]},
+  enfoque:{wheel:["enfoque","tareas","apuntes","musica"], grid:["calc","notas","spotify","calendario","consola",null,null,null]},
+  noche:{wheel:["musica","spotify","recordatorios","consola"], grid:["mensajes","whatsapp","youtube","instagram","fotos","atajos","notas","enlace"]},
+};
+const clone = o => JSON.parse(JSON.stringify(o));
+const state = Object.assign({mode:"escuela", layouts:{}}, store.get("atlas.movil.v1", {}));
+if (!DEFAULTS[state.mode]) state.mode = "escuela";
+const L = () => (state.layouts[state.mode] ||= clone(DEFAULTS[state.mode]));
+const save = () => store.set("atlas.movil.v1", state);
+const modeName = () => MODES.find(m => m.id === state.mode).n;
+let editing = false, sel = null, active = 0, catFilter = "all";
+
+/* ---------- Reloj ---------- */
+const DIAS = ["DOM","LUN","MAR","MIÉ","JUE","VIE","SÁB"], MESES = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+function tick() {
+  const d = new Date(), h = d.getHours();
+  $("#clock").textContent = pad(h) + ":" + pad(d.getMinutes());
+  $("#date").textContent = `${DIAS[d.getDay()]} ${MESES[d.getMonth()]} ${pad(d.getDate())}`;
+  $("#greet").textContent = h < 12 ? "BUENOS DÍAS" : h < 19 ? "BUENAS TARDES" : "BUENAS NOCHES";
+  $("#dayLbl").textContent = "DÍA · " + Math.round((h * 60 + d.getMinutes()) / 1440 * 100) + "%";
+}
+tick(); setInterval(tick, 10000);
+
+/* ---------- Rueda (medio arco superior) ---------- */
+const C = {x:300, y:300}, R1 = 168, R2 = 262, START = 180, SPAN = 180;
+const P = (r, a) => [C.x + r * Math.cos(a * Math.PI / 180), C.y + r * Math.sin(a * Math.PI / 180)];
+(function buildStatic() {
+  const t = $("#ticks");
+  for (let a = START; a <= START + SPAN; a += 3) { const long = (a - START) % 18 === 0, [x1, y1] = P(270, a), [x2, y2] = P(long ? 281 : 276, a); svgEl("line", {x1, y1, x2, y2, stroke: long ? "#c9d3dc" : "#2c3a48", "stroke-width": long ? 1.8 : 1.2}, t); }
+  const v = $("#vortex");
+  const tri = r => { const pts = [0, 120, 240].map(a => P(r, a - 90)); const c = (p, q) => [(p[0] + q[0]) / 2 - (C.x - (p[0] + q[0]) / 2) * .28, (p[1] + q[1]) / 2 - (C.y - (p[1] + q[1]) / 2) * .28]; let d = `M${pts[0]}`; for (let k = 0; k < 3; k++) { const p = pts[k], q = pts[(k + 1) % 3]; d += ` Q${c(p, q)} ${q}`; } return d + "Z"; };
+  for (let i = 0; i < 14; i++) svgEl("path", {d: tri(56 - i * 3), fill:"none", stroke:"#dfe7ee", "stroke-width":1.1, opacity:(.25 + i * .05).toFixed(2), transform:`rotate(${i * 11} 300 300)`}, v);
+})();
+const segPath = (a0, a1) => { const [ax, ay] = P(R2, a0), [bx, by] = P(R2, a1), [cx, cy] = P(R1, a1), [dx, dy] = P(R1, a0); return `M${ax} ${ay} A${R2} ${R2} 0 0 1 ${bx} ${by} L${cx} ${cy} A${R1} ${R1} 0 0 0 ${dx} ${dy}Z`; };
+function renderWheel() {
+  const g = $("#segs"); g.textContent = "";
+  const arr = L().wheel, n = arr.length, w = SPAN / n;
+  arr.forEach((id, i) => {
+    const a0 = START + i * w + 1.4, a1 = START + (i + 1) * w - 1.4, mid = START + (i + .5) * w, app = A[id];
+    const cls = ["seg"]; if (!app) cls.push("empty"); if (!editing && app && i === active) cls.push("on"); if (editing && sel && sel.t === "wheel" && sel.i === i) cls.push("sel");
+    const s = svgEl("g", {class: cls.join(" "), "data-t":"wheel", "data-i":i, tabindex:0, role:"button", "aria-label": app ? app.n : "Ranura vacía"}, g);
+    svgEl("path", {class:"s", d: segPath(a0, a1)}, s);
+    const [mx, my] = P((R1 + R2) / 2, mid);
+    const c = svgEl("g", {transform:`translate(${mx} ${my}) rotate(${mid + 90})`, "pointer-events":"none"}, s);
+    const ic = svgEl("svg", {x:-15, y:-42, width:30, height:30, viewBox:"0 0 24 24", fill:"none", "stroke-width":1.7, "stroke-linecap":"round", "stroke-linejoin":"round", class:"ico"}, c);
+    svgEl("path", {d: ICON[app ? id : "plus"]}, ic);
+    svgEl("text", {class:"n", x:0, y:4}, c).textContent = app ? app.s : "VACÍO";
+    if (app) { svgEl("rect", {class:"t", x:-17, y:17, width:34, height:15}, c); svgEl("text", {class:"t", x:0, y:25}, c).textContent = TAG[app.c]; }
+  });
+  $("#arcMode").textContent = modeName();
+}
+function renderGrid() {
+  $("#grid").innerHTML = L().grid.map((id, i) => { const app = A[id], s = editing && sel && sel.t === "grid" && sel.i === i; return `<button class="tile ${app ? "" : "empty"} ${s ? "sel" : ""}" data-t="grid" data-i="${i}" type="button" aria-label="${app ? app.n : "Acceso vacío"}"><span class="no">${pad(i + 1)}</span>${icon(app ? id : "plus")}<b>${app ? app.s : "VACÍO"}</b></button>`; }).join("");
+}
+function renderModes() {
+  $("#modes").innerHTML = MODES.map(m => `<button role="tab" type="button" aria-selected="${m.id === state.mode}" data-mode="${m.id}">${m.n}</button>`).join("");
+  $("#hMode").textContent = "MODO " + modeName();
+  document.body.style.filter = state.mode === "noche" ? "brightness(.7) saturate(.75)" : "";
+}
+function renderEdit() {
+  $("#esheet").hidden = !editing; document.body.classList.toggle("editing", editing);
+  $("#editBtn").textContent = editing ? "Listo" : "Editar"; $("#editBtn").classList.toggle("on", editing);
+  $("#hint").textContent = editing ? "TOCA UNA RANURA Y LUEGO UNA APP" : "TOCA PARA ABRIR · MANTÉN PRESIONADO PARA EDITAR";
+  if (!editing) return;
+  const arr = sel ? L()[sel.t] : null, cur = sel ? A[arr[sel.i]] : null;
+  $("#evSel").innerHTML = sel ? `${sel.t === "wheel" ? "RUEDA" : "ACCESO"} ${pad(sel.i + 1)} · <span>${cur ? cur.n.toUpperCase() : "VACÍA"}</span>` : "Toca una ranura";
+  const q = s => document.querySelector(`[data-act="${s}"]`);
+  q("left").disabled = !sel || sel.i === 0; q("right").disabled = !sel || sel.i === arr.length - 1; q("remove").disabled = !cur;
+  q("add").disabled = L().wheel.length >= 6; q("del").disabled = L().wheel.length <= 3;
+  $("#cats").innerHTML = [["all", "TODAS"], ...Object.entries(CATS)].map(([k, v]) => `<button type="button" data-cat="${k}" class="${k === catFilter ? "on" : ""}">${v}</button>`).join("");
+  const inT = new Set(sel ? arr : []);
+  $("#catalog").innerHTML = APPS.filter(a => catFilter === "all" || a.c === catFilter).map(a => `<button type="button" class="capp ${inT.has(a.id) ? "in" : ""}" data-app="${a.id}">${icon(a.id)}<span>${a.n}</span></button>`).join("");
+}
+function renderAll() { renderModes(); renderWheel(); renderGrid(); renderEdit(); }
+
+/* ---------- Toques en ranuras ---------- */
+let lp = null, lpFired = false, startPt = null;
+const slotFrom = e => { const el = e.target.closest("[data-t]"); return el ? {t: el.dataset.t, i: +el.dataset.i} : null; };
+["#segs", "#grid"].forEach(s => {
+  const root = $(s);
+  root.addEventListener("pointerdown", e => { const sl = slotFrom(e); if (!sl) return; lpFired = false; startPt = [e.clientX, e.clientY]; clearTimeout(lp); lp = setTimeout(() => { lpFired = true; if (navigator.vibrate) navigator.vibrate(20); enterEdit(sl); }, 550); });
+  root.addEventListener("pointermove", e => { if (startPt && Math.hypot(e.clientX - startPt[0], e.clientY - startPt[1]) > 10) clearTimeout(lp); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => root.addEventListener(ev, () => clearTimeout(lp)));
+  root.addEventListener("contextmenu", e => e.preventDefault());
+  root.addEventListener("click", e => { const sl = slotFrom(e); if (!sl || lpFired) return; tapSlot(sl); });
+  root.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { const sl = slotFrom(e); if (sl) { e.preventDefault(); tapSlot(sl); } } });
+});
+function tapSlot(sl) {
+  if (editing) { sel = sl; renderWheel(); renderGrid(); renderEdit(); return; }
+  const id = L()[sl.t][sl.i];
+  if (!id) return enterEdit(sl);
+  if (sl.t === "wheel") { active = sl.i; renderWheel(); }
+  launch(id, sl.i);
+}
+function enterEdit(sl) { closeWin(); editing = true; sel = sl || {t:"wheel", i:0}; renderAll(); }
+function exitEdit() { editing = false; sel = null; save(); renderAll(); toast("Distribución guardada"); }
+$("#editBtn").addEventListener("click", () => editing ? exitEdit() : enterEdit());
+$("#esheet").addEventListener("click", e => {
+  const cat = e.target.closest("[data-cat]"); if (cat) { catFilter = cat.dataset.cat; renderEdit(); return; }
+  const ap = e.target.closest("[data-app]"); if (ap && sel) { const arr = L()[sel.t], j = arr.indexOf(ap.dataset.app); if (j >= 0 && j !== sel.i) arr[j] = arr[sel.i]; arr[sel.i] = ap.dataset.app; if (sel.i < arr.length - 1) sel.i++; save(); renderWheel(); renderGrid(); renderEdit(); return; }
+  const b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
+  const lay = L(), act = b.dataset.act;
+  if (act === "done") return exitEdit();
+  if (act === "add" && lay.wheel.length < 6) { lay.wheel.push(null); sel = {t:"wheel", i:lay.wheel.length - 1}; }
+  if (act === "del" && lay.wheel.length > 3) { lay.wheel.pop(); if (sel && sel.t === "wheel" && sel.i >= lay.wheel.length) sel.i = lay.wheel.length - 1; }
+  if (sel) { const arr = lay[sel.t]; if (act === "remove") arr[sel.i] = null; if (act === "left" || act === "right") { const j = sel.i + (act === "left" ? -1 : 1); if (j >= 0 && j < arr.length) { [arr[j], arr[sel.i]] = [arr[sel.i], arr[j]]; sel.i = j; } } }
+  if (active >= lay.wheel.length) active = 0;
+  save(); renderAll();
+});
+$("#modes").addEventListener("click", e => { const b = e.target.closest("[data-mode]"); if (!b || b.dataset.mode === state.mode) return; state.mode = b.dataset.mode; active = 0; if (sel) sel = {t: sel.t, i: 0}; save(); renderAll(); });
+$("#statTasks").addEventListener("click", () => launch("tareas"));
+$("#statFocus").addEventListener("click", () => launch("enfoque"));
+
+/* ---------- Abrir apps ---------- */
+function launch(id, slot) {
+  const app = A[id]; if (!app) return;
+  if (app.url) {   // app del iPhone por esquema de URL
+    const a = document.createElement("a"); a.href = app.url; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
+    toast(`Abriendo ${app.n}…`);
+    return;
+  }
+  openWin(id, slot);
+}
+const built = {};
+let openId = null;
+function openWin(id, slot) {
+  const app = A[id], w = $("#win");
+  $("#wNo").textContent = pad((slot ?? Math.max(0, L().wheel.indexOf(id))) + 1);
+  $("#wIco").innerHTML = icon(id); $("#wName").textContent = app.n.toUpperCase();
+  const body = $("#wBody"); body.textContent = ""; body.appendChild(built[id] ||= BUILD[id]());
+  w.hidden = false; w.classList.remove("in"); void w.offsetWidth; w.classList.add("in"); openId = id;
+  if (id === "enlace") drawLink();
+}
+function closeWin() { $("#win").hidden = true; openId = null; }
+$("#wClose").addEventListener("click", closeWin);
+document.addEventListener("keydown", e => { if (e.key === "Escape") { if (openId) closeWin(); else if (editing) exitEdit(); } });
+const el = html => { const d = document.createElement("div"); d.style.height = "100%"; d.innerHTML = html; return d; };
+
+/* Tareas compartidas */
+let tasks = store.get("atlas.movil.tareas", null) || [{t:"Pedir la pantalla de 10.1\" (ejemplo)", done:false}, {t:"Comprar INA226 R010 (ejemplo)", done:false}, {t:"Medir el paquete de baterías (ejemplo)", done:false}];
+const saveTasks = () => store.set("atlas.movil.tareas", tasks);
+function updateStats() {
+  const n = tasks.filter(t => !t.done).length, tot = tasks.length || 1;
+  $("#nTasks").textContent = n; $("#rTasks").setAttribute("stroke-dasharray", (n / tot * 100).toFixed(1) + " 100");
+}
+updateStats();
+
+/* Enfoque */
+const focus = {run:false, phase:0, left:1500};
+function drawFocus() {
+  const tot = focus.phase ? 300 : 1500, mm = pad(Math.floor(focus.left / 60)), ss = pad(focus.left % 60);
+  const f = built.enfoque;
+  if (f) { f.querySelector("#fTime").textContent = mm + ":" + ss; const r = f.querySelector("#fRing"); r.setAttribute("stroke-dasharray", (focus.left / tot * 100).toFixed(2) + " 100"); r.setAttribute("stroke", focus.phase ? "#70b7ff" : "#ff3d55"); f.querySelector("#fPhase").textContent = focus.phase ? "DESCANSO · 5 MIN" : "ENFOQUE · 25 MIN"; f.querySelector("#fGo").textContent = focus.run ? "Pausar" : "Iniciar"; }
+  $("#nFocus").textContent = focus.run ? mm : "25";
+  $("#sFocus").textContent = focus.run ? (focus.phase ? "DESCANSO" : "EN CURSO") : "LISTO";
+  $("#rFocus").setAttribute("stroke-dasharray", (focus.left / tot * 100).toFixed(1) + " 100");
+  const fc = $("#focusChip"); fc.hidden = !focus.run; fc.textContent = (focus.phase ? "DESCANSO " : "ENFOQUE ") + mm + ":" + ss;
+}
+setInterval(() => { if (!focus.run) return; if (--focus.left <= 0) { focus.phase ^= 1; focus.left = focus.phase ? 300 : 1500; if (navigator.vibrate) navigator.vibrate([200, 100, 200]); toast(focus.phase ? "Descanso: 5 minutos" : "De vuelta al enfoque"); } drawFocus(); }, 1000);
+
+/* Enlace con la tablet */
+const link = {ws:null, live:false, host: store.get("atlas.movil.host", "atlas.local"), stats:null, onMsg:null};
+const canLink = () => location.protocol === "http:" || location.protocol === "file:";
+function drawLink() {
+  const chip = $("#linkChip"); chip.classList.toggle("on", link.live); chip.lastChild.textContent = link.live ? "ATLAS " + (link.stats ? Math.round(link.stats.bat) + "%" : "ENLAZADO") : "SIN ENLACE";
+  const f = built.enlace; if (!f) return;
+  f.querySelector("#lkState").innerHTML = link.live ? `<span class="pill ok">ENLAZADO</span>` : `<span class="pill idle">SIN ENLACE</span>`;
+  const s = link.stats;
+  f.querySelector("#lkBat").textContent = s ? Math.round(s.bat) + "%" : "—";
+  f.querySelector("#lkBus").textContent = s ? s.bus.toFixed(2) + " V" : "—";
+  f.querySelector("#lkTemp").textContent = s ? Math.round(s.temp) + " °C" : "—";
+  f.querySelector("#lkWhy").hidden = canLink();
+}
+function connectLink() {
+  if (!canLink()) { toast("Abre la app desde la tablet para enlazar"); return; }
+  try {
+    const ws = new WebSocket(`ws://${link.host}:8765`);
+    ws.onopen = () => { link.ws = ws; link.live = true; drawLink(); toast("Enlazado con ATLAS"); };
+    ws.onclose = () => { link.live = false; drawLink(); };
+    ws.onerror = () => toast("No encuentro la tablet en " + link.host);
+    ws.onmessage = e => { try { const m = JSON.parse(e.data); if (m.type === "stats") { link.stats = m; drawLink(); } else link.onMsg && link.onMsg(m); } catch (_) {} };
+  } catch (_) { toast("Dirección inválida"); }
+}
+
+/* Consola */
+let msgsEl;
+function addMsg(who, text) { const m = document.createElement("div"); m.className = "msg " + who; m.innerHTML = `<div class="who">${who === "atlas" ? "A.T.L.A.S." : "TÚ"}</div><div class="body"></div>`; m.lastChild.textContent = text; msgsEl.appendChild(m); msgsEl.scrollTop = msgsEl.scrollHeight; return m.lastChild; }
+function localReply(q) {
+  const t = norm(q), ab = t.match(/^(abre|abrir|abra|inicia|lanza)\s+(.+)/);
+  if (ab) { const w = ab[2].trim(), app = APPS.find(a => norm(a.n).includes(w) || w.includes(norm(a.n))); if (app) { setTimeout(() => { closeWin(); launch(app.id); }, 1100); return `Abriendo ${app.n}.`; } return "No encuentro esa app en el catálogo."; }
+  if (/tarea|pendiente/.test(t)) { const p = tasks.filter(x => !x.done); return p.length ? `Tiene ${p.length} pendiente${p.length > 1 ? "s" : ""}. Primero: ${p[0].t}.` : "Sin tareas pendientes."; }
+  if (/enfoque|pomodoro/.test(t)) return focus.run ? `Enfoque en curso: ${pad(Math.floor(focus.left / 60))}:${pad(focus.left % 60)} restantes.` : "Enfoque detenido. Ábralo desde la rueda para iniciar 25 minutos.";
+  if (/modo/.test(t)) return `Modo activo: ${modeName()}.`;
+  if (/hola|buen/.test(t)) return "Afirmativo. A.T.L.A.S. móvil en línea. Indique la tarea.";
+  if (/bater|tablet|estado/.test(t)) return link.live && link.stats ? `Tablet: batería ${Math.round(link.stats.bat)}%, ${Math.round(link.stats.temp)} °C.` : "Sin enlace con la tablet. Abra Enlace ATLAS.";
+  return "Sin enlace con el núcleo. En modo local respondo sobre tareas, enfoque, modos y «abre [app]».";
+}
+function ask(q) {
+  addMsg("user", q); const out = addMsg("atlas", ""); out.classList.add("cursor"); $("#core").classList.add("think");
+  const done = () => { out.classList.remove("cursor"); $("#core").classList.remove("think"); };
+  if (link.live) { let buf = ""; link.onMsg = m => { if (m.type === "token") { buf += m.text; out.textContent = buf; msgsEl.scrollTop = msgsEl.scrollHeight; } if (m.type === "done") done(); }; link.ws.send(JSON.stringify({type:"chat", text:q})); return; }
+  setTimeout(() => { const text = localReply(q); let i = 0; const step = () => { i += 2; out.textContent = text.slice(0, i); msgsEl.scrollTop = msgsEl.scrollHeight; if (i < text.length) setTimeout(step, reduced ? 0 : 16); else done(); }; step(); }, 500);
+}
+
+const BUILD = {
+  consola() {
+    const d = el(`<div class="chat"><div class="msgs"><div class="msg atlas"><div class="who">A.T.L.A.S.</div><div class="body">Consola activa. Pruebe «tareas pendientes», «abre música» o «modo».</div></div></div><form class="entry" autocomplete="off"><input id="chatIn" type="text" placeholder="Escriba una orden…" aria-label="Orden para ATLAS" enterkeyhint="send"><button class="btn blue" type="submit">Enviar</button></form></div>`);
+    msgsEl = d.querySelector(".msgs");
+    d.querySelector("form").addEventListener("submit", e => { e.preventDefault(); const i = d.querySelector("input"), v = i.value.trim(); if (!v) return; i.value = ""; ask(v); });
+    return d;
+  },
+  tareas() {
+    const d = el(`<form class="entry" autocomplete="off"><input id="taskIn" type="text" placeholder="Nueva tarea…" aria-label="Nueva tarea" enterkeyhint="done"><button class="btn blue" type="submit">Agregar</button></form><ul class="tasks"></ul>`);
+    const ul = d.querySelector("ul");
+    const draw = () => { ul.innerHTML = tasks.map((t, i) => `<li class="${t.done ? "done" : ""}"><button class="box" type="button" data-k="${i}" aria-label="Marcar">${t.done ? "✓" : ""}</button><span></span><button class="x" type="button" data-x="${i}">QUITAR</button></li>`).join("") || `<li><span></span><span class="lbl">Sin tareas</span></li>`; ul.querySelectorAll("li > span:first-of-type").forEach((s, i) => { if (tasks[i]) s.textContent = tasks[i].t; }); updateStats(); };
+    d.querySelector("form").addEventListener("submit", e => { e.preventDefault(); const i = d.querySelector("input"), v = i.value.trim(); if (!v) return; tasks.push({t:v, done:false}); i.value = ""; saveTasks(); draw(); });
+    ul.addEventListener("click", e => { const k = e.target.closest("[data-k]"), x = e.target.closest("[data-x]"); if (k) tasks[+k.dataset.k].done ^= true; if (x) tasks.splice(+x.dataset.x, 1); if (k || x) { saveTasks(); draw(); } });
+    draw(); return d;
+  },
+  apuntes() {
+    const d = el(`<h3>SE GUARDAN EN ESTE CELULAR</h3><textarea class="notes" id="notesTxt" placeholder="Escriba aquí…"></textarea>`);
+    const ta = d.querySelector("textarea"); ta.value = store.get("atlas.movil.apuntes", ""); ta.addEventListener("input", () => store.set("atlas.movil.apuntes", ta.value));
+    return d;
+  },
+  enfoque() {
+    const d = el(`<div class="focus"><span class="lbl" id="fPhase">ENFOQUE · 25 MIN</span><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="#2c3a48" stroke-width="4"/><circle id="fRing" cx="60" cy="60" r="52" fill="none" stroke="#ff3d55" stroke-width="4" pathLength="100" stroke-dasharray="100 100" transform="rotate(-90 60 60)"/></svg><div class="time" id="fTime">25:00</div><div class="row"><button class="btn red" id="fGo" type="button">Iniciar</button><button class="btn" id="fReset" type="button">Reiniciar</button></div></div>`);
+    d.querySelector("#fGo").addEventListener("click", () => { focus.run = !focus.run; drawFocus(); });
+    d.querySelector("#fReset").addEventListener("click", () => { focus.run = false; focus.phase = 0; focus.left = 1500; drawFocus(); });
+    setTimeout(drawFocus); return d;
+  },
+  calc() {
+    const keys = ["C","(",")","÷","7","8","9","×","4","5","6","−","1","2","3","+","0",".","⌫","="];
+    const d = el(`<div class="calc"><div class="disp"><small id="cExpr">&nbsp;</small><div id="cOut">0</div></div>${keys.map(k => `<button type="button" class="${"÷×−+()".includes(k) ? "op" : ""} ${k === "=" ? "eq" : ""}">${k}</button>`).join("")}</div>`);
+    let expr = "";
+    d.addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return; const k = b.textContent;
+      if (k === "C") { expr = ""; d.querySelector("#cExpr").innerHTML = "&nbsp;"; }
+      else if (k === "⌫") expr = expr.slice(0, -1);
+      else if (k === "=") { const js = expr.replace(/×/g, "*").replace(/÷/g, "/").replace(/−/g, "-"); if (!/^[\d+\-*/().\s]+$/.test(js)) return; try { const r = Function(`"use strict";return (${js})`)(); if (!isFinite(r)) throw 0; d.querySelector("#cExpr").textContent = expr + " ="; expr = String(+r.toPrecision(12)); } catch (_) { d.querySelector("#cExpr").textContent = "Expresión inválida"; } }
+      else expr += k;
+      d.querySelector("#cOut").textContent = expr || "0";
+    });
+    return d;
+  },
+  enlace() {
+    const d = el(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="margin:0">TABLET A.T.L.A.S.</h3><span id="lkState"></span></div>
+      <dl class="kv"><dt>BATERÍA</dt><dd id="lkBat">—</dd><dt>BUS 5 V</dt><dd id="lkBus">—</dd><dt>TEMP</dt><dd id="lkTemp">—</dd></dl>
+      <div class="field"><label class="lbl" for="lkHost">Dirección de la tablet</label><input id="lkHost" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <div class="row"><button class="btn red" id="lkGo" type="button">Conectar</button></div>
+      <div class="note" id="lkWhy">La tablet no usa internet. Para enlazar, conecta el celular a la red local de la tablet y abre la versión móvil que ella misma sirve, en <b>http://atlas.local:8765/movil</b>. Desde esta página el navegador no permite conexiones locales.</div>
+      <h3 style="margin-top:18px">CON ENLACE PODRÁS</h3>
+      <ul class="tasks" style="margin-top:0"><li><span>01</span><span>Ver batería, consumo y temperatura de la tablet</span><span></span></li><li><span>02</span><span>Hablar con el núcleo desde la Consola</span><span></span></li><li><span>03</span><span>Abrir apps en la tablet desde la rueda</span><span></span></li></ul>`);
+    const inp = d.querySelector("#lkHost"); inp.value = link.host;
+    inp.addEventListener("change", () => { link.host = inp.value.trim() || "atlas.local"; store.set("atlas.movil.host", link.host); });
+    d.querySelector("#lkGo").addEventListener("click", connectLink);
+    return d;
+  },
+};
+
+/* ---------- Línea de pulso ---------- */
+let ph = 0;
+function beat(u) { if (u < .08) return Math.sin(u / .08 * Math.PI) * .12; if (u > .14 && u < .17) return -(u - .14) / .03 * .2; if (u >= .17 && u < .21) return -.2 + (u - .17) / .04 * 1.2; if (u >= .21 && u < .25) return 1 - (u - .21) / .04 * 1.35; if (u >= .25 && u < .28) return -.35 + (u - .25) / .03 * .35; if (u > .38 && u < .55) return Math.sin((u - .38) / .17 * Math.PI) * .22; return 0; }
+function drawEcg() {
+  const c = $("#ecg"), r = c.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+  if (c.width !== Math.round(r.width * dpr) || c.height !== Math.round(r.height * dpr)) { c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); }
+  const x = c.getContext("2d"), w = c.width, h = c.height; x.clearRect(0, 0, w, h);
+  x.strokeStyle = link.live ? "#3be0a0" : "rgba(255,61,85,.9)"; x.lineWidth = 1.4 * dpr; x.shadowColor = x.strokeStyle; x.shadowBlur = 6 * dpr; x.beginPath();
+  const period = 180 * dpr;
+  for (let i = 0; i <= w; i += dpr) { const y = h * .62 - beat(((i + ph * 50 * dpr) % period) / period) * h * .55; i ? x.lineTo(i, y) : x.moveTo(i, y); }
+  x.stroke();
+}
+function frame() { ph += .03; drawEcg(); if (!reduced) requestAnimationFrame(frame); }
+frame(); if (reduced) setInterval(() => { ph += .5; drawEcg(); }, 600);
+
+renderAll(); drawFocus(); drawLink();
+})();
+</script>
+
+<script>
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+</script>
+</body>
+</html>
